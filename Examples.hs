@@ -7,7 +7,7 @@
 import Control.Monad.Reader hiding (when)
 import Data.Decimal
 import qualified Data.List as L hiding (and)
-import DSL 
+import DSL
 import FinancialArithmetic
 import Models
 
@@ -19,6 +19,7 @@ main = do
     let payments1 = []
     let u1 = Contract "1" $ when (at $ 3 Months) (Give $ One $ 100 USD)
     let u2 = Contract "2" $ american (1 Month, 3 Months) (One $ 10 NZD)
+
     
     
     print $ u1 .+ u2

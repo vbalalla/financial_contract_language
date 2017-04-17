@@ -261,3 +261,94 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
         toAmount (One amt) = amt
 
 ------------------------------------------------------------------------------
+u1 = Contract "1" $ when (at $ 3 Months) (Give $ One $ 100 USD)
+u2 = Contract "2" $ american (1 Month, 3 Months) (One $ 10 NZD)
+u3 = Contract "3" $ Or (american (1 Month, 3 Months) (One $ 10 NZD)) (when (at $ 3 Months) (Give $ One $ 100 USD))
+-- main = zcb
+
+data Risk = Double
+
+--risk :: Model -> Contract -> Risk
+--risk m t c =
+--cal = [0..31]
+--
+--getDate :: Terms -> Time -> Bool
+--getDate (When (Obs o) c) t = o t
+--getDate (Cond (Obs o) c1 c2) t = o t
+----x = 3 Months
+--z = getDate (terms u2)
+--
+--n = map z cal
+
+----------------------------------------------------------------------------------
+cal = [0..31]
+--getCal ::[Integer] -> Terms -> [Integer]
+--getCal calender = calX
+--    where   calX Zero                   = calender
+--            calX (One k)                = calender
+--            calX (Give c)               = calX c
+--            calX (o `Scale` c)          = calX c
+--            calX (c1 `And` c2)          = calAnd (calX c1) (calX c2)
+--            calX (c1 `Or` c2)           = calOr (calX c1) (calX c2)
+--            calX (Cond (Obs o) c1 c2)   = map (calCond o) (calAnd (calX c1) (calX c2))
+--            calX (When (Obs o) c)       = map (calWhen o) (calX c)
+
+-----------------------------------------------------------------------------------------------------------------
+
+type Calender = Obs String
+--data Calender = Calender (Obs String)
+
+
+--getEvent :: Time ->Terms -> Calender
+--getEvent t = calEvent
+--    where   calEvent Zero                   = konst "Zero "
+--            calEvent (One k)                = Obs (\time -> ((show k) ++ " "))
+--            calEvent (Give c)               = Obs (\time -> "give " ++ (getValue (calEvent c) time))
+----            calEvent ((Obs o) `Scale` c)    = (show (o t)) ++ (calEvent c)
+--            calEvent (c1 `And` c2)          = Obs (\time -> (if (((getValue (calEvent c1) time) /= "") && ((getValue (calEvent c2) time) /= "")) then ((getValue (calEvent c1) time) ++ "and " ++ (getValue (calEvent c2) time)) else (if (((getValue (calEvent c1) time) == "") && ((getValue (calEvent c2) time) == "")) then "" else ((getValue (calEvent c1) time) ++ (getValue (calEvent c2) time)))))
+----            calEvent (c1 `Or` c2)           = if (((calEvent c1) /= "") && ((calEvent c2) /= "")) then ((calEvent c1) ++ "and " ++ (calEvent c2)) else (if (((calEvent c1) == "") && ((calEvent c2) == "")) then "" else ((calEvent c1) ++ (calEvent c2)))
+----            calEvent (Cond (Obs o) c1 c2)   = if (o t) then (calEvent c1) else (calEvent c2)
+--            calEvent (When (Obs o) c)       = Obs (\time -> (if (o time) then (getValue (calEvent c) time) else ""))
+
+calender :: Terms -> Calender
+
+andCal :: Calender -> Calender -> Calender
+andCal c1 c2 = Obs (\time -> (if (((getValue c1 time) /= "") && ((getValue c2 time) /= "")) then ((getValue c1 time) ++ "and " ++ (getValue c2 time)) else (if (((getValue c1 time) == "") && ((getValue c2 time) == "")) then "" else ((getValue c1 time) ++ (getValue c2 time)))))
+
+zeroCal :: Calender
+zeroCal = Obs (\time -> ("Zero "))
+
+calender Zero                   = zeroCal
+calender (One k)                = Obs (\time -> ((show k) ++ " "))
+calender (Give c)               = Obs (\time -> "give " ++ (getValue (calender c) time))
+--            calEvent ((Obs o) `Scale` c)    = (show (o t)) ++ (calEvent c)
+calender (c1 `And` c2)          = andCal (calender c1) (calender c2)
+--            calEvent (c1 `Or` c2)           = if (((calEvent c1) /= "") && ((calEvent c2) /= "")) then ((calEvent c1) ++ "and " ++ (calEvent c2)) else (if (((calEvent c1) == "") && ((calEvent c2) == "")) then "" else ((calEvent c1) ++ (calEvent c2)))
+--            calEvent (Cond (Obs o) c1 c2)   = if (o t) then (calEvent c1) else (calEvent c2)
+calender (When (Obs o) c)       = Obs (\time -> (if (o time) then (getValue (calender c) time) else ""))
+
+--calEvent :: Terms -> Time -> String
+--calEvent terms t = getValue (getEvent t terms) t
+
+x = calender (terms u1)
+
+--printCal :: [String] -> x
+--printCal ([]) = "\n"
+--printCal (x:xs) = x ++ "\n" ++ (printCal xs)
+
+
+calCond :: (Integer -> Bool) -> Integer -> Integer
+calCond o i = if (o i) then -1 else i
+
+calWhen :: (Integer -> Bool) -> Integer -> Integer
+calWhen o i = if (o i) then -1 else i
+
+calAnd :: [Integer] -> [Integer] -> [Integer]
+calAnd [] [] = []
+calAnd (x:xs) (y:ys) = if ((x == y) && (x >= 0)) then x:(calAnd xs ys) else (if (x<0 && y<0) then (x+y):(calAnd xs ys) else (if (x<0) then x:(calAnd xs ys) else y:(calAnd xs ys)) )
+
+calOr :: [Integer] -> [Integer] -> [Integer]
+calOr [] [] = []
+calOr (x:xs) (y:ys) = if ((x == y) && (x >= 0)) then x:(calOr xs ys) else (if (x<0 && y<0) then (x+y):(calOr xs ys) else (if (x<0) then x:(calOr xs ys) else y:(calOr xs ys)) )
+
+
