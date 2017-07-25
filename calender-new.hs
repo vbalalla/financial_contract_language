@@ -264,7 +264,9 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
 u1 = Contract "1" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
 u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
+u4 = Contract "4" (Scale (konst 100) $ Give $ One $ 1 USD)
 u5 = Contract "5" $ american (1 Month, 3 Months) (terms u1)
+
 -- main = zcb
 
 data Risk = Double
@@ -286,7 +288,10 @@ zeroCal :: Calender
 zeroCal = konst [0]
 
 oneCal :: Amount -> Calender
-oneCal k = konst [1]
+oneCal k = Obs (\time -> (if (time == 0) then [1] else [0]))
+
+giveCal :: Calender -> Calender
+giveCal cal = lift2 mult (konst (-1)) cal
 
 scaleCal :: Obs Int -> Calender -> Calender
 scaleCal o cal = lift2 mult o cal
@@ -294,15 +299,14 @@ scaleCal o cal = lift2 mult o cal
 zipCal :: Calender -> Calender -> Calender
 zipCal cal1 cal2 = lift2 merge cal1 cal2
 
-shift :: Calender -> Obs Bool -> Calender
-shift cal (Obs o) = Obs (\time -> (if (o time) then (getValue cal time) else (getValue zeroCal time)))
+shift :: Calender -> Time -> Calender
+shift cal t = Obs (\time -> (if (time < t) then (getValue zeroCal time)
+                                            else (getValue cal (time-t))))
 
-giveCal :: Calender -> Calender
-giveCal cal = lift2 mult (konst (-1)) cal
+
 
 
 evalCalenderAt :: Time -> Terms -> Calender
---calender :: Terms -> Calender
 evalCalenderAt t = calender
     where
         calender Zero                   = zeroCal
@@ -311,8 +315,13 @@ evalCalenderAt t = calender
         calender (o `Scale` c)          = scaleCal o (calender c)
         calender (c1 `And` c2)          = zipCal (calender c1) (calender c2)
         calender (c1 `Or` c2)           = zipCal (calender c1) (calender c2)
-        calender (Cond (Obs o) c1 c2)   = if (o t) then (calender c1) else (calender c2)
-        calender (When o c)             = shift (calender c) o
+        calender (Cond (Obs o) c1 c2)   = if (o t) then (shift (calender c1) t)
+                                            else (shift (calender c2) t)
+        calender (When (Obs o) c)       = if (o t) then (shift (calender c) t)
+                                            else zeroCal
 
-x = evalCalenderAt 1 (terms u5)
+
+
+
+x = evalCalenderAt 2 (terms u5)
 
