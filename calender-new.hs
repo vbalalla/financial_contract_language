@@ -263,8 +263,13 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
 ------------------------------------------------------------------------------
 u1 = Contract "1" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
 u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)
+
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
+
+
+
 u4 = Contract "4" (Scale (konst 100) $ Give $ One $ 1 USD)
+
 u5 = Contract "5" $ american (1 Month, 3 Months) (terms u1)
 
 -- main = zcb
@@ -323,5 +328,4 @@ evalCalenderAt t = calender
 
 
 
-x = evalCalenderAt 2 (terms u5)
-
+x = evalCalenderAt 3 (terms u3)

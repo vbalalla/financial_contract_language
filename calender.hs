@@ -302,7 +302,6 @@ giveCal cal = lift2 mult (konst (-1)) cal
 
 
 evalCalenderAt :: Time -> Terms -> Calender
---calender :: Terms -> Calender
 evalCalenderAt t = calender
     where
         calender Zero                   = zeroCal
@@ -311,8 +310,10 @@ evalCalenderAt t = calender
         calender (o `Scale` c)          = scaleCal o (calender c)
         calender (c1 `And` c2)          = zipCal (calender c1) (calender c2)
         calender (c1 `Or` c2)           = zipCal (calender c1) (calender c2)
-        calender (Cond (Obs o) c1 c2)   = if (o t) then (calender c1) else (calender c2)
+        calender (Cond (Obs o) c1 c2)   = if (o t) then (calender c1)
+                                          else (calender c2)
         calender (When o c)             = shift (calender c) o
 
-x = evalCalenderAt 1 (terms u5)
+
+x = evalCalenderAt 1 (terms u3)
 
