@@ -264,7 +264,13 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
 u1 = Contract "1" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
 u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
-u5 = Contract "5" $ american (1 Month, 3 Months) (terms u1)
+u4 = Contract "4" $ when (at $ 3 Months) (Scale (konst 100) $ One $ 1 USD)
+u5 = Contract "5" $ american (0 Month, 5 Months)  (Scale (konst 100) $ One $ 1 USD)
+
+
+
+u6 = Contract "6" $ And (when (at $ 3 Months) (Scale (konst 10) $ Give $ One $ 1 USD)) (american (0 Month, 5 Months)  (Scale (konst 100) $ One $ 1 USD))
+
 -- main = zcb
 
 data Risk = Double
@@ -279,8 +285,12 @@ merge (x:xs) (y:ys) = x : y : merge xs ys
 mult :: Int -> [Int]-> [Int]
 mult x ys = map (x *) ys
 
+--data types
+
 type Event = [Int]
 type Calender = Obs Event
+
+--eval
 
 zeroCal :: Calender
 zeroCal = konst [0]
@@ -301,6 +311,8 @@ giveCal :: Calender -> Calender
 giveCal cal = lift2 mult (konst (-1)) cal
 
 
+--contract eval calender
+
 evalCalenderAt :: Time -> Terms -> Calender
 evalCalenderAt t = calender
     where
@@ -315,5 +327,5 @@ evalCalenderAt t = calender
         calender (When o c)             = shift (calender c) o
 
 
-x = evalCalenderAt 1 (terms u3)
+x = evalCalenderAt 0 (terms u6)
 

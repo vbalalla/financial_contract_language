@@ -266,17 +266,15 @@ u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD
 
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
 
-
-
 u4 = Contract "4" (Scale (konst 100) $ Give $ One $ 1 USD)
 
 u5 = Contract "5" $ american (1 Month, 3 Months) (terms u1)
 
+u6 = Contract "6" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
+
 -- main = zcb
 
 data Risk = Double
-
-
 
 merge :: [Int] -> [Int] -> [Int]
 merge xs     []     = xs
@@ -329,3 +327,4 @@ evalCalenderAt t = calender
 
 
 x = evalCalenderAt 3 (terms u3)
+
