@@ -72,7 +72,8 @@ varUsedInDist x dist = case dist of
     Binary _ d1 d2 -> varUsedInDist x d1 || varUsedInDist x d2
     Ternary If d1 d2 d3 -> varUsedInDist x d1 || varUsedInDist x d2 || varUsedInDist x d3
     Lookup time process -> varUsedInDist x time || varUsedInProcess x process
-    Sample d f -> varUsedInDist x d || varUsedInDist x (f (TagD (x+1))) _ -> False
+    Sample d f -> varUsedInDist x d || varUsedInDist x (f (TagD (x+1)))
+    _ -> False
 
 varUsedInProcess :: Int -> Process a -> Bool
 varUsedInProcess x process = case process of

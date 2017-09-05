@@ -1,9 +1,7 @@
-
-
 {-# LANGUAGE GADTs, KindSignatures, FlexibleInstances, FlexibleContexts,
 MultiParamTypeClasses, NoMonomorphismRestriction, TypeFamilies #-}
 
-module Language.SPL (
+module SPL (
     -- * Built-in constructs
     -- ** Distributions
     uniform, normal, lookup, sample,

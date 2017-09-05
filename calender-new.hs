@@ -324,7 +324,5 @@ evalCalenderAt t = calender
                                             else zeroCal
 
 
-
-
 x = evalCalenderAt 3 (terms u3)
 

@@ -275,12 +275,18 @@ u6 = Contract "6" $ And (when (at $ 3 Months) (Scale (konst 10) $ Give $ One $ 1
 
 data Risk = Double
 
-
+rmdups :: (Ord a) => [a] -> [a]
+rmdups = map head . L.group . L.sort
 
 merge :: [Int] -> [Int] -> [Int]
-merge xs     []     = xs
-merge []     ys     = ys
-merge (x:xs) (y:ys) = x : y : merge xs ys
+merge xs     []     = rmdups (0:xs)
+merge []     ys     = rmdups (0:ys)
+merge (x:xs) (y:ys) = rmdups (x : y : merge xs ys)
+
+add :: [Int] -> [Int] -> [Int]
+add xs [] = rmdups (0:xs)
+add [] ys = rmdups (0:ys)
+add (x:xs) (y:ys) = rmdups ((x+y) : (merge (add (x:xs) ys)  (add xs (y:ys))))
 
 mult :: Int -> [Int]-> [Int]
 mult x ys = map (x *) ys
@@ -301,15 +307,17 @@ oneCal k = konst [1]
 scaleCal :: Obs Int -> Calender -> Calender
 scaleCal o cal = lift2 mult o cal
 
-zipCal :: Calender -> Calender -> Calender
-zipCal cal1 cal2 = lift2 merge cal1 cal2
+zipCalOr :: Calender -> Calender -> Calender
+zipCalOr cal1 cal2 = lift2 merge cal1 cal2
+
+zipCalAnd :: Calender -> Calender -> Calender
+zipCalAnd cal1 cal2 = lift2 merge cal1 cal2
 
 shift :: Calender -> Obs Bool -> Calender
 shift cal (Obs o) = Obs (\time -> (if (o time) then (getValue cal time) else (getValue zeroCal time)))
 
 giveCal :: Calender -> Calender
 giveCal cal = lift2 mult (konst (-1)) cal
-
 
 --contract eval calender
 
@@ -320,12 +328,18 @@ evalCalenderAt t = calender
         calender (One k)                = oneCal k
         calender (Give c)               = giveCal (calender c)
         calender (o `Scale` c)          = scaleCal o (calender c)
-        calender (c1 `And` c2)          = zipCal (calender c1) (calender c2)
-        calender (c1 `Or` c2)           = zipCal (calender c1) (calender c2)
+        calender (c1 `And` c2)          = zipCalAnd (calender c1) (calender c2)
+        calender (c1 `Or` c2)           = zipCalOr (calender c1) (calender c2)
         calender (Cond (Obs o) c1 c2)   = if (o t) then (calender c1)
                                           else (calender c2)
         calender (When o c)             = shift (calender c) o
 
 
-x = evalCalenderAt 0 (terms u6)
+x = evalCalenderAt 0 (terms u3)
+
+y1 = add [6,1] [20,6,45]
+y2 = add [1] [20]
+y3 = add [6,1] []
+
+
 
