@@ -264,16 +264,19 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
 u1 = Contract "1" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
 u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
-u4 = Contract "4" $ when (at $ 3 Months) (Scale (konst 100) $ One $ 1 USD)
+u4 = Contract "4" $ when (at $ 4 Months) (Scale (konst 100) $ One $ 1 USD)
 u5 = Contract "5" $ american (0 Month, 5 Months)  (Scale (konst 100) $ One $ 1 USD)
 
-
+u7 = Contract "7" $ cond (between 3 6) (terms u1) (terms u4)
 
 u6 = Contract "6" $ And (when (at $ 3 Months) (Scale (konst 10) $ Give $ One $ 1 USD)) (american (0 Month, 5 Months)  (Scale (konst 100) $ One $ 1 USD))
 
 -- main = zcb
 
 data Risk = Double
+
+revobs :: Obs Bool -> Obs Bool
+revobs (Obs o) = Obs (\time -> (if (o time) then False else True))
 
 rmdups :: (Ord a) => [a] -> [a]
 rmdups = map head . L.group . L.sort
@@ -311,7 +314,7 @@ zipCalOr :: Calender -> Calender -> Calender
 zipCalOr cal1 cal2 = lift2 merge cal1 cal2
 
 zipCalAnd :: Calender -> Calender -> Calender
-zipCalAnd cal1 cal2 = lift2 merge cal1 cal2
+zipCalAnd cal1 cal2 = lift2 add cal1 cal2
 
 shift :: Calender -> Obs Bool -> Calender
 shift cal (Obs o) = Obs (\time -> (if (o time) then (getValue cal time) else (getValue zeroCal time)))
@@ -330,16 +333,22 @@ evalCalenderAt t = calender
         calender (o `Scale` c)          = scaleCal o (calender c)
         calender (c1 `And` c2)          = zipCalAnd (calender c1) (calender c2)
         calender (c1 `Or` c2)           = zipCalOr (calender c1) (calender c2)
-        calender (Cond (Obs o) c1 c2)   = if (o t) then (calender c1)
-                                          else (calender c2)
+        calender (Cond o c1 c2)         = zipCalAnd (shift (calender c1) o) (shift (calender c2) (revobs o))
         calender (When o c)             = shift (calender c) o
 
+x = evalCalenderAt 0 (terms u5)
 
-x = evalCalenderAt 0 (terms u3)
-
-y1 = add [6,1] [20,6,45]
+y1 = merge [6,1] [20,6,45]
 y2 = add [1] [20]
-y3 = add [6,1] []
+y3 = revobs (at 6)
+
+exRate :: Currency -> Currency -> Obs ExchangeRate
+exRate c1 c2 = konst 1
+
+m = Model USD (konst 1) (konst 1) exRate
+
+z = toAmountAt m 3 (terms u1)
+
 
 
 

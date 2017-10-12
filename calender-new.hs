@@ -233,6 +233,8 @@ data Model = Model {
     loanRate :: Obs Decimal,
     exchangeRate :: Currency -> Currency -> Obs ExchangeRate }
 
+
+
 evalContractAt :: Model -> Time -> Contract -> Contract
 evalContractAt m t (Contract name terms) = Contract name (evalTermsAt m t terms)
 
@@ -262,13 +264,13 @@ toAmountAt m t = toAmount . (evalTermsAt m t)
 
 ------------------------------------------------------------------------------
 u1 = Contract "1" $ when (at $ 4 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
-u2 = Contract "2" $ american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)
+u2 = Contract "2" $ american (1 Month, 6 Months) (Scale (konst 10) $ One $ 1 NZD)
 
 u3 = Contract "3" $ And (american (1 Month, 3 Months) (Scale (konst 10) $ One $ 1 NZD)) (when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD))
 
 u4 = Contract "4" (Scale (konst 100) $ Give $ One $ 1 USD)
 
-u5 = Contract "5" $ american (1 Month, 3 Months) (terms u1)
+u5 = Contract "5" $ american (1 Month, 6 Months) (terms u1)
 
 u6 = Contract "6" $ when (at $ 3 Months) (Scale (konst 100) $ Give $ One $ 1 USD)
 
@@ -290,8 +292,8 @@ type Calender = Obs Event
 zeroCal :: Calender
 zeroCal = konst [0]
 
-oneCal :: Amount -> Calender
-oneCal k = Obs (\time -> (if (time == 0) then [1] else [0]))
+oneCal :: Calender
+oneCal = Obs (\time -> (if (time == 0) then [1] else [0]))
 
 giveCal :: Calender -> Calender
 giveCal cal = lift2 mult (konst (-1)) cal
@@ -313,7 +315,7 @@ evalCalenderAt :: Time -> Terms -> Calender
 evalCalenderAt t = calender
     where
         calender Zero                   = zeroCal
-        calender (One k)                = oneCal k
+        calender (One k)                = oneCal
         calender (Give c)               = giveCal (calender c)
         calender (o `Scale` c)          = scaleCal o (calender c)
         calender (c1 `And` c2)          = zipCal (calender c1) (calender c2)
@@ -324,5 +326,7 @@ evalCalenderAt t = calender
                                             else zeroCal
 
 
-x = evalCalenderAt 3 (terms u5)
+x = evalCalenderAt 4 (terms u5)
 
+
+when (at $ 4) (Scale (konst 100) $ Give $ One)

@@ -188,7 +188,7 @@ instance ToConstant (Process Bool) where
 -------------------- Syntactic sugar for pairs --------------------
 
 class Pair a where
-    pair :: (Type b, Type c) => a b -> a c -> a (b, c)
+    pair :: (Type b, Type  c) => a b -> a c -> a (b, c)
     first :: (Type b, Type c) => a (b, c) -> a b
     second :: (Type b, Type c) => a (b, c) -> a c
 
