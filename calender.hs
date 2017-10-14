@@ -347,7 +347,8 @@ exRate c1 c2 = konst 1
 
 m = Model USD (konst 1) (konst 1) exRate
 
-z = toAmountAt m 3 (terms u1)
+z = toAmountAt m 2 (When (at $ 3 Months) (Give $ One $ 100 USD))
+
 
 
 
