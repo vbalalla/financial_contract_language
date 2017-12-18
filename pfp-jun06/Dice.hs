@@ -27,7 +27,7 @@ sixes p n = (p . length . filter (==6)) ?? dice n
 plus1 x = choose 0.5 x (x+1)
 
 droll = do
-	d <- die
+        d <- die
 	plus1 d
 
 g3 = (>3) ?? die

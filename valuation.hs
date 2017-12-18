@@ -19,7 +19,8 @@ module DSL where
 import Data.Decimal
 import qualified Data.List as L
 ------------------------------------------------------------------------------
-
+import System.IO.Unsafe  -- be careful!
+import System.Random
 
         -- Contract
 
@@ -231,6 +232,7 @@ data Model = Model {
     mainCurrency :: Currency,
     depositRate :: Obs Decimal,
     loanRate :: Obs Decimal,
+    interestRate :: Obs Float ,
     exchangeRate :: Currency -> Currency -> Obs ExchangeRate }
 
 evalContractAt :: Model -> Time -> Contract -> Contract
@@ -247,10 +249,76 @@ evalTermsAt m t = eval
         eval (Zero `And` (One amt))    = One amt
         eval ((One amt) `And` Zero)    = One amt
         eval (c1 `And` c2)             = eval ((eval c1) `DSL.and` (eval c2))
-        -- eval (c1 `Or`  c2)             = maxT ((exchangeRate m) (getCurrency (eval c1)) (getCurrency (eval c2)) time) (eval c1) (eval c2)
+        eval (c1 `Or`  c2)             = maxT (getValue ((exchangeRate m) USD USD) t) (eval c1) (eval c2)
         eval (Cond (Obs o) c1 c2)      = if (o t) then (eval c1) else (eval c2)
-        eval (When (Obs o) c)          = if (o t) then (eval c)  else Zero
+        eval (When (Obs o) c)          = if (o t) then (eval c) else Zero
         eval (Scale (Obs s) (One (Amt amt cur))) = One $ Amt (amt *. (realToFrac $ s t)) cur
+
+data Dist = Dist Decimal Decimal
+
+mean :: Dist -> Decimal
+mean (Dist m sd) = m
+
+std :: Dist -> Decimal
+std (Dist m sd) = sd
+
+zeroP :: Obs Dist
+zeroP = (konst (Dist 0 0))
+
+oneP :: Amount -> Obs Dist
+oneP amt = konst (Dist (amountToDecimal amt) 0)
+
+convertToP :: Model -> Time -> Currency ->  Terms -> Obs Dist
+convertToP m t c0 Zero = zeroP
+convertToP m t c0 (One (Amt amt c))
+    | (c0 == c)  = oneP $ Amt amt c0 -- No need to convert anything
+    | otherwise  = oneP $ Amt (amt *. currentER) c0
+    where
+        -- Exchange Rates
+        observableER = (exchangeRate m) c c0
+        currentER    = realToFrac $ getValue observableER t
+
+scaleP ::Obs Decimal -> Obs Dist -> Obs Dist
+scaleP (Obs o) (Obs p) = Obs (\t -> (Dist ((mean (p t)) * (o t)) ((std (p t)) * (o t))))
+
+andP :: Obs Dist -> Obs Dist -> Obs Dist
+-- andP (Obs p1) (Obs p2) = Obs (\t -> (Dist ((mean (p1 t)) + (mean (p2 t))) ((((std (p1 t)) ^^ 2) + ((std (p2 t)) ^^ 2)) ^^ (1 / 2)) ))
+andP (Obs p1) (Obs p2) = Obs (\t -> (Dist ((mean (p1 t)) + (mean (p2 t))) ((std (p1 t)) + (std (p2 t))) ))
+
+maxTP :: ExchangeRate -> Time -> Obs Dist -> Obs Dist -> Obs Dist
+maxTP exchR t (Obs p1) (Obs p2) = if ((mean (p2 t)) > (mean (p1 t))) then (Obs p2) else (Obs p1)
+-- maxTP exchR Zero Zero = Zero
+-- maxTP exchR (One (Amt a1 c1)) Zero = One $ Amt (max a1 0) c1
+-- maxTP exchR Zero (One (Amt a2 c2)) = One $ Amt (max 0 a2) c2
+-- maxTP exchR (One (Amt a1 c1)) (One (Amt a2 c2)) = One $ Amt (max a1 a21) c1
+--     where
+--         a21 = a2 *. (realToFrac exchR)
+
+-- disc :: Model -> Time -> Obs Dist -> Obs Dist
+-- disc m 0 (Obs p) = (Obs p)
+
+
+evalTermsAtP :: Model -> Time -> Terms -> Obs Dist
+evalTermsAtP m t = evalP
+    where
+        evalP Zero                      = zeroP
+        evalP (One amt)                 = convertToP m t (mainCurrency m) $ One amt
+        evalP (Give c)                  = scaleP (Obs (\t -> (-1))) (evalP c)
+        evalP (Zero `And` Zero)         = zeroP
+        evalP (Zero `And` (One amt))    = oneP amt
+        evalP ((One amt) `And` Zero)    = oneP amt
+        evalP (c1 `And` c2)             = (evalP c1) `andP` (evalP c2)
+        evalP (c1 `Or`  c2)             = maxTP (getValue ((exchangeRate m) USD USD) t) t (evalP c1) (evalP c2)
+        evalP (Cond (Obs o) c1 c2)      = if (o t) then (evalP c1) else (evalP c2)
+--         evalP (When (Obs o) c)          = if (o t) then (discAll m t (evalP c)) else zeroP
+        evalP (Scale (Obs s) (One (Amt amt cur))) = oneP $ Amt (amt *. (realToFrac $ s t)) cur
+
+disc :: Model -> Time -> Terms -> Terms
+disc m 0 c = c
+disc m t c = (disc m (t-1) (scaleT (getValue (interestRate m)) c))
+
+scaleT :: (Time -> Float) -> Terms -> Terms
+scaleT o c = c
 
 -- Calculates contract value at a given point of time
 toAmountAt :: Model -> Time -> Terms -> Amount
@@ -345,11 +413,42 @@ y3 = revobs (at 6)
 exRate :: Currency -> Currency -> Obs ExchangeRate
 exRate c1 c2 = konst 0.8
 
-m = Model USD (konst 0.95) (konst 0.95) exRate
+m = Model USD (konst 0.95) (konst 0.95) (konst 0.95) exRate
+z = toAmountAt m 2 (american (0 Month, 5 Months)  (One $ 100 USD))
 
-z = evalTermsAt m 1 (american (0 Month, 5 Months)  (One $ 100 USD))
+-- interest :: Decimal -> Decimal -> Int -> Obs Int
+-- interest up down current= Obs (\t -> (intRate up down current t))
+--
+-- intRate :: Decimal -> Decimal -> Int -> Time -> Int
+-- intRate up down = itr
+--     where
+--         itr old 0 = old
+-- --         itr old t = if ((unsafePerformIO toss) ==0) then (itr (old + up) (t-1)) else (itr (old - down) (t-1))
+--         itr old t = itr (old + (unsafePerformIO toss)) (t-1)
+--
+-- toss :: IO Int
+-- toss = getStdRandom (randomR (-99, 99))
 
 
+
+k1 :: [Float]
+k1 = map (/ 100) (map unsafePerformIO x1)
+    where x1 = (getStdRandom (randomR (90, 110))) : x1
+
+k2 :: [Float]
+k2 = map (/ 100) (map unsafePerformIO x2)
+    where x2 = (getStdRandom (randomR (90, 110))) : x2
+
+-- z :: [Float]
+-- z = map
+
+interestWalk :: Float -> [Float] -> [Float]
+interestWalk = walk
+    where walk currentIr (x:xs) = (currentIr * x) : (walk (currentIr * x) xs)
+
+z1 = interestWalk 0.01 k1
+
+z2 = interestWalk 0.01 k2
 
 
 

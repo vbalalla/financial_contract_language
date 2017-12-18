@@ -245,7 +245,7 @@ normal = shape (normalCurve 0.5 0.5)
 
 normalCurve :: Float -> Float -> Float -> Float
 normalCurve mean stddev x = 1 / sqrt (2 * pi) * exp (-1/2 * u^2)
-	where u = (x - mean) / stddev
+    where u = (x - mean) / stddev
 
 
 -- extracting and mapping the domain of a distribution
